@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quiet Journey - 靜奢之旅</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ivory': '#F5F2EC',   // Soft Ivory
+                        'greige': '#D9D2C6',  // Warm Greige
+                        'stone': '#B7A996',   // Natural Stone
+                        'mocha': '#4E4034',   // Deep Mocha
+                        'walnut': '#8C7864',  // Cozy Walnut
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px rgba(78, 64, 52, 1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .magazine-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    </style>
+</head>
+<body class="bg-greige text-mocha">
+    <div id="app" class="max-w-md mx-auto min-h-screen p-6 pb-32 relative">
+        <div id="app-content">
+            <header class="mb-10 pt-4 flex justify-between items-end border-b-2 border-mocha pb-2">
+                <div>
+                    <h1 class="text-4xl font-black italic tracking-tighter uppercase leading-none">Journey</h1>
+                    <p class="text-[10px] font-bold tracking-[0.3em] text-stone mt-1">EST. 2026 | PRIVATE EDITION</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xl font-black uppercase">{{ weather.temp }}°C</p>
+                    <p class="text-[10px] font-bold text-stone uppercase">{{ weather.condition }}</p>
+                </div>
+            </header>
+
+            <section class="mb-12">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-black italic uppercase">01. Itinerary / 行程表</h2>
+                </div>
+                <div class="space-y-4">
+                    <div v-for="(item, index) in itinerary" :key="index" class="bg-ivory border-2 border-mocha p-4 shadow-hard group">
+                        <div class="flex items-center gap-3 mb-2">
+                            <input v-model="item.time" class="bg-mocha text-ivory text-xs px-2 py-1 font-black w-16 text-center outline-none">
+                            <input v-model="item.location" class="bg-transparent font-black text-lg outline-none flex-1" placeholder="Location...">
+                            <button @click="removeItem(index)" class="text-stone hover:text-mocha">✕</button>
+                        </div>
+                        <div class="flex justify-between items-center text-[10px] font-black tracking-widest text-stone">
+                            <button @click="openGoogleMaps(item.location)" class="hover:underline">📍 GOOGLE MAPS</button>
+                            <span class="opacity-0 group-hover:opacity-100">EDITABLE / 可編輯</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-12">
+                <h2 class="text-xl font-black italic uppercase mb-4">02. Split Bill / 分帳換算</h2>
+                <div class="bg-ivory border-2 border-mocha p-6 shadow-hard">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-black uppercase block mb-1">Amount (JPY) / 日幣金額</label>
+                            <div class="flex border-2 border-mocha">
+                                <input v-model.number="bill.jpy" type="number" class="w-full bg-transparent p-3 text-2xl font-black outline-none">
+                                <div class="bg-mocha text-ivory px-4 flex items-center font-black">JPY</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-y border-mocha/10">
+                            <span class="text-[10px] font-black">RATE: {{ rate }}</span>
+                            <span class="text-xl font-black text-stone">≈ NT$ {{ Math.round(bill.jpy * rate).toLocaleString() }}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-[10px] font-black uppercase text-stone">Divide by / 分帳人數:</span>
+                            <input v-model.number="bill.people" type="number" class="w-12 bg-greige/30 border-b-2 border-mocha text-center font-black outline-none">
+                        </div>
+                        <div class="bg-mocha p-4 text-ivory flex justify-between items-center">
+                            <span class="text-xs font-bold uppercase">Each / 每人應付</span>
+                            <span class="text-2xl font-black italic">NT$ {{ Math.round((bill.jpy * rate) / bill.people) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-black italic uppercase mb-4">03. Route / 全域地圖</h2>
+                <div @click="openAllLocations" class="bg-stone border-2 border-mocha h-40 shadow-hard relative flex items-center justify-center cursor-pointer group overflow-hidden">
+                    <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#4e4034_1.5px,transparent_1.5px)] [background-size:12px_12px]"></div>
+                    <div class="z-10 text-center">
+                        <p class="text-ivory font-black text-sm uppercase tracking-widest">Open Google Navigation</p>
+                        <p class="text-[10px] text-ivory/70 font-bold uppercase mt-1">{{ itinerary.length }} Pins Tracked</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="fixed bottom-8 left-0 right-0 flex justify-center px-6 gap-3 z-50">
+            <button @click="addItem" class="bg-mocha text-ivory flex-1 py-4 shadow-hard font-black text-sm uppercase tracking-tighter active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
+                Add Place / 新增地點
+            </button>
+            <button @click="exportPDF" class="bg-ivory border-2 border-mocha px-4 shadow-hard active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
+                📥
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+        createApp({
+            setup() {
+                const itinerary = ref([
+                    { time: '10:00', location: 'Tokyo Tower' },
+                    { time: '14:30', location: 'Shibuya Sky' }
+                ]);
+                const bill = ref({ jpy: 12000, people: 2 });
+                const rate = ref(0.21);
+                const weather = ref({ temp: 12, condition: 'Clear' });
+
+                const addItem = () => itinerary.value.push({ time: '12:00', location: '' });
+                const removeItem = (idx) => itinerary.value.splice(idx, 1);
+                
+                const openGoogleMaps = (loc) => {
+                    if(!loc) return;
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+                };
+
+                const openAllLocations = () => {
+                    const locs = itinerary.value.filter(i => i.location).map(i => i.location).join('/');
+                    window.open(`https://www.google.com/maps/dir/${locs}`, '_blank');
+                };
+
+                const exportPDF = () => {
+                    const element = document.getElementById('app-content');
+                    html2pdf().from(element).set({
+                        margin: 10,
+                        filename: 'My_Quiet_Journey.pdf',
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    }).save();
+                };
+
+                return { itinerary, bill, rate, weather, addItem, removeItem, openGoogleMaps, openAllLocations, exportPDF };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
